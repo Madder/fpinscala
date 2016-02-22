@@ -111,4 +111,29 @@ object List { // `List` companion object. Contains functions for creating and wo
 
   def map[A,B](l: List[A])(f: A => B): List[B] =
     foldRight(l, Nil: List[B])((a,t) => Cons(f(a),t))
+
+  def filter[A](as: List[A])(f: A => Boolean): List[A] =
+    foldRight(as, Nil: List[A])((a, t) => if (f(a)) Cons(a,t) else t)
+
+  def flatMap[A,B](as: List[A])(f: A => List[B]): List[B] =
+    concat(map(as)(f))
+
+  def filter_2[A](as: List[A])(f: A => Boolean): List[A] =
+    flatMap(as){ a =>
+      if (f(a)) List(a) else List()
+    }
+
+}
+
+object Test {
+  def main(args: Array[String]) {
+    val l = List.filter_2(List(4,3,2,1)){ a =>
+      a match {
+        case 3 => false
+        case _ => true
+      }
+    }
+
+    println(l)
+  }
 }

@@ -266,11 +266,11 @@ object TreeFoldable extends Foldable[Tree] {
     case Leaf(a) => f(a)
     case Branch(l, r) => mb.op(foldMap(l)(f)(mb), foldMap(r)(f)(mb))
   }
-  override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B) = as match {
+  override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B) : B = as match {
     case Leaf(a) => f(z, a)
     case Branch(l, r) => foldLeft(r)(foldLeft(l)(z)(f))(f)
   }
-  override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B) = as match {
+  override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B) : B = as match {
     case Leaf(a) => f(a, z)
     case Branch(l, r) => foldRight(l)(foldRight(r)(z)(f))(f)
   }

@@ -4,13 +4,25 @@ package fpinscala.errorhandling
 import scala.{Option => _, Some => _, Either => _, _} // hide std library `Option`, `Some` and `Either`, since we are writing our own in this chapter
 
 sealed trait Option[+A] {
-  def map[B](f: A => B): Option[B] = sys.error("todo")
+  def map[B](f: A => B): Option[B] = this match {
+    case Some(a) => Some(f(a))
+    case None => None
+  }
 
-  def getOrElse[B>:A](default: => B): B = sys.error("todo")
+  def getOrElse[B>:A](default: => B): B = this match {
+    case Some(a) => a
+    case None => default
+  }
 
-  def flatMap[B](f: A => Option[B]): Option[B] = sys.error("todo")
+  def flatMap[B](f: A => Option[B]): Option[B] = this match {
+    case Some(a) => f(a)
+    case None => None
+  }
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] = sys.error("todo")
+  def orElse[B>:A](ob: => Option[B]): Option[B] = this match {
+    case None => ob
+    case _ => this
+  }
 
   def filter(f: A => Boolean): Option[A] = sys.error("todo")
 }
@@ -45,4 +57,11 @@ object Option {
   def sequence[A](a: List[Option[A]]): Option[List[A]] = sys.error("todo")
 
   def traverse[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] = sys.error("todo")
+}
+
+object Test {
+  def main(args: Array[String]) {
+    println(Option.failingFn2(5))
+    println("Omar")
+  }
 }
