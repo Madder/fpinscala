@@ -35,3 +35,12 @@ object Either {
     catch { case e: Exception => Left(e) }
 
 }
+
+object EitherTest {
+  import Either._
+
+  def main(args: Array[String]) {
+    val a = Try(2/0)
+    println(a)
+  }
+}
