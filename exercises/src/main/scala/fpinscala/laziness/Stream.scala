@@ -10,6 +10,8 @@ trait Stream[+A] {
       case _ => z
     }
 
+
+
   def exists(p: A => Boolean): Boolean = 
     foldRight(false)((a, b) => p(a) || b) // Here `b` is the unevaluated recursive step that folds the tail of the stream. If `p(a)` returns `true`, `b` will never be evaluated and the computation terminates early.
 
@@ -18,6 +20,7 @@ trait Stream[+A] {
     case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
   }
+
   //Mine
   def toList: List[A] = this match {
     case Empty => Nil
@@ -52,28 +55,15 @@ trait Stream[+A] {
   }
 
   // 1st impl (not stack safe)
-  def take(n: Int): Stream[A] = {
-
+  def take_mine(n: Int): Stream[A] = {
     def go(s: => Stream[A], m: Int) : Stream[A] = if (m<=0) s else s match {
       case Cons(h,t) => cons(h(), go(t(), m-1))
       case Empty => empty
     }
-
     go(this, n)
-
   }
 
-  /*
-  Create a new Stream[A] from taking the n first elements from this. We can achieve that by recursively
-  calling take on the invoked tail of a cons cell. We make sure that the tail is not invoked unless
-  we need to, by handling the special case where n == 1 separately. If n == 0, we can avoid looking
-  at the stream at all.
-*/
-  def take_fpinscala_1(n: Int): Stream[A] = this match {
-    case Cons(h, t) if n > 1 => cons(h(), t().take_fpinscala_1(n - 1))
-    case Cons(h, _) if n == 1 => cons(h(), empty)
-    case _ => empty
-  }
+
 
   def drop(n: Int): Stream[A] = this match {
     case Cons(h,t) if n>0 => t().drop(n-1)
@@ -81,9 +71,12 @@ trait Stream[+A] {
   }
 
   def takeWhile(p: A => Boolean): Stream[A] = this match {
-    case Cons(h,t) if p(h())==true => cons(h(), t().takeWhile(p))
+    case Cons(h,t) if p(h()) => cons(h(), t().takeWhile(p))
     case _ => empty
   }
+
+  def takeWhileViaFoldRight(p: A => Boolean): Stream[A] =
+    foldRight(empty:Stream[A])((a,s) => if (!p(a)) s else cons(a,s))
 
   def forAll(p: A => Boolean): Boolean = this match {
     case Cons(h,t) =>  p(h()) && t().forAll(p)
@@ -98,10 +91,53 @@ trait Stream[+A] {
     case Empty => None
   }
 
+  def headOptionViaFoldRight: Option[A] =
+    foldRight(None:Option[A])((a,_) => Some(a))
+
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
 
+  def map[B](f: A => B): Stream[B] =
+    foldRight(empty: Stream[B])((h,t) => cons(f(h),t))
+
+  def filter(p: A => Boolean) : Stream[A] =
+    foldRight(empty: Stream[A])((h,t) => if (p(h)) cons(h,t) else t)
+
+  def append[B >: A](other: => Stream[B]): Stream[B] =
+    foldRight(other:Stream[B])((h,acc)=> cons(h,acc))
+
+
+  def flatMap[B](f: A => Stream[B]): Stream[B] =
+    foldRight(empty: Stream[B])((h,t) => f(h) append t)
+
+  def findViaFilter(p: A => Boolean): Option[A] =
+    filter(p).headOption
+
   def startsWith[B](s: Stream[B]): Boolean = sys.error("todo")
+
+
+  @annotation.tailrec
+  final def foldLeft[B](z: => B)(f: ( => B, A) => B): B = {
+
+    this match {
+      case Cons(h, t) => {println("foldStep Step "+ TestStream.foldStep + " Cons Case "); TestStream.foldStep = TestStream.foldStep +1; t().foldLeft(f(z, h()))(f)}
+      case _ => {println("foldStep Step "+ TestStream.foldStep + " _ Case "); TestStream.foldStep = TestStream.foldStep +1; z}
+    }
+  }
+
+  /*
+Create a new Stream[A] from taking the n first elements from this. We can achieve that by recursively
+calling take on the invoked tail of a cons cell. We make sure that the tail is not invoked unless
+we need to, by handling the special case where n == 1 separately. If n == 0, we can avoid looking
+at the stream at all.
+*/
+  def take(n: Int): Stream[A] = this match {
+    case Cons(h, t) if n > 1 => {println("takeStep Step "+ TestStream.takeStep + " Cons Case n>1 "); TestStream.takeStep = TestStream.takeStep +1; cons(h(), t().take(n - 1))}
+    case Cons(h, _) if n == 1 => {println("takeStep Step "+ TestStream.takeStep + " Cons Case n==1 "); TestStream.takeStep = TestStream.takeStep +1; cons(h(), empty)}
+    case _ => {println("takeStep Step "+ TestStream.takeStep + " _ Case "); TestStream.takeStep = TestStream.takeStep +1; empty}
+  }
+
+
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -123,4 +159,23 @@ object Stream {
   def from(n: Int): Stream[Int] = sys.error("todo")
 
   def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = sys.error("todo")
+}
+
+object TestStream {
+  import Stream._
+  var foldStep = 0
+  var takeStep = 0
+  def main(args: Array[String]) {
+    var sumStep = 0
+    def sum(a: () =>Int, b: Int) = {println("sumStep Step "+ sumStep + " b= "+ b); sumStep = sumStep +1; a()+b}
+    val k :Int= ones.take(20).foldLeft(0)((a,b) => sum(() => a,b))
+    println(k)
+  }
+
+
+  //def f : Int=>Int = i => i+1
+  //def composepwr[A](f: A=> A)(n: Int): A=> A = if (n <= 0) f else (f compose composepwr(f)(n-1))
+  //def g = composepwr(f)(30)
+  //println("g defined:" + g)
+  //println("g(0): " + g(0))
 }
