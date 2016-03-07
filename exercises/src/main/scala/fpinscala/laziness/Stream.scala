@@ -120,8 +120,8 @@ trait Stream[+A] {
   final def foldLeft[B](z: => B)(f: ( => B, A) => B): B = {
 
     this match {
-      case Cons(h, t) => {println("foldStep Step "+ TestStream.foldStep + " Cons Case "); TestStream.foldStep = TestStream.foldStep +1; t().foldLeft(f(z, h()))(f)}
-      case _ => {println("foldStep Step "+ TestStream.foldStep + " _ Case "); TestStream.foldStep = TestStream.foldStep +1; z}
+      case Cons(h, t) =>  t().foldLeft(f(z, h()))(f)
+      case _ =>  z
     }
   }
 
@@ -132,9 +132,9 @@ we need to, by handling the special case where n == 1 separately. If n == 0, we 
 at the stream at all.
 */
   def take(n: Int): Stream[A] = this match {
-    case Cons(h, t) if n > 1 => {println("takeStep Step "+ TestStream.takeStep + " Cons Case n>1 "); TestStream.takeStep = TestStream.takeStep +1; cons(h(), t().take(n - 1))}
-    case Cons(h, _) if n == 1 => {println("takeStep Step "+ TestStream.takeStep + " Cons Case n==1 "); TestStream.takeStep = TestStream.takeStep +1; cons(h(), empty)}
-    case _ => {println("takeStep Step "+ TestStream.takeStep + " _ Case "); TestStream.takeStep = TestStream.takeStep +1; empty}
+    case Cons(h, t) if n > 1 => cons(h(), t().take(n - 1))
+    case Cons(h, _) if n == 1 => cons(h(), empty)
+    case _ => empty
   }
 
 
@@ -156,20 +156,40 @@ object Stream {
     else cons(as.head, apply(as.tail: _*))
 
   val ones: Stream[Int] = Stream.cons(1, ones)
-  def from(n: Int): Stream[Int] = sys.error("todo")
 
-  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = sys.error("todo")
+  def constant[A](a: A): Stream[A] = Stream.cons(a, constant(a))
+
+  def from(n: Int): Stream[Int] = Stream.cons(n, from(n+1))
+
+  def fibs: Stream[Int] = {
+    def go(cur: (Int, Int)): Stream[(Int, Int)] =
+      Stream.cons(cur, go((cur._2, cur._1 + cur._2)))
+
+    go(0,1).map(_._1)
+  }
+
+  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = f(z) match {
+    case Some((a,s)) => cons(a,unfold(s)(f))
+    case None => empty
+  }
+
+  val onesViaUnfold =
+    unfold(1)(_ => Some((1,1)))
+
+
 }
 
 object TestStream {
   import Stream._
-  var foldStep = 0
-  var takeStep = 0
+  //var foldStep = 0
+  //var takeStep = 0
   def main(args: Array[String]) {
-    var sumStep = 0
-    def sum(a: () =>Int, b: Int) = {println("sumStep Step "+ sumStep + " b= "+ b); sumStep = sumStep +1; a()+b}
-    val k :Int= ones.take(20).foldLeft(0)((a,b) => sum(() => a,b))
-    println(k)
+    //var sumStep = 0
+    //def sum(a: () =>Int, b: Int) = {println("sumStep Step "+ sumStep + " b= "+ b); sumStep = sumStep +1; a()+b}
+    //val k :Int= ones.take(20).foldLeft(0)((a,b) => sum(() => a,b))
+    //println(k)
+    def f(x: => Int, y: Int) = {println("ha"); 2}
+    println(fibs.take(20000).foldLeft(0)(f))
   }
 
 
