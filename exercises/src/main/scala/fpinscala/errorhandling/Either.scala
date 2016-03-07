@@ -28,8 +28,7 @@ case class Left[+E](get: E) extends Either[E,Nothing]
 case class Right[+A](get: A) extends Either[Nothing,A]
 
 object Either {
-//  def traverse[E,A,B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] =
-//    es foldRight(Right(List[B]()): Either[E, List[B]] )((a, elb) => f(a) map2())
+  def traverse[E,A,B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] = sys.error("todo")
 
   def sequence[E,A](es: List[Either[E,A]]): Either[E,List[A]] = sys.error("todo")
 

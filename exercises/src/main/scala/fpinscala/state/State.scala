@@ -163,9 +163,82 @@ object State {
       sa.map2(acc)(_::_)
     }
 
-  type Rand[A] = State[RNG, A]
-  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = ???
+  def modify[S](f: S => S): State[S, Unit] = for {
+    s <- get // Gets the current state and assigns it to `s`.
+    _ <- set(f(s)) // Sets the new state to `f` applied to `s`.
+  } yield ()
+
+  def get[S]: State[S, S] = State(s => (s, s))
+
+  def set[S](s: S): State[S, Unit] = State(_ => ((), s))
+
 }
+
+object MyCandy {
+  def coin: State[Machine, (Int, Int)] = State { machine =>
+    if (machine.locked && machine.candies>0)  ((machine.candies,machine.coins+1), Machine(false,machine.candies,machine.coins+1))
+    else ((machine.candies,machine.coins),machine)
+  }
+
+  def turn: State[Machine, (Int, Int)] = State { machine =>
+    if (machine.locked == false && machine.candies>0) ((machine.candies-1,machine.coins), Machine(false,machine.candies-1,machine.coins))
+    else ((machine.candies,machine.coins),machine)
+  }
+  def state_transition(input: Input): State[Machine, (Int, Int)] = input match {
+    case Coin => coin
+    case Turn => turn
+  }
+
+  def id: State[Machine, (Int, Int)] = State { machine => ((machine.candies,machine.coins),machine)
+  }
+  type Rand[A] = State[RNG, A]
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = inputs match {
+    case Nil => id
+    case input::tail =>  state_transition(input) flatMap(_ => simulateMachine(tail))
+  }
+}
+object Candy {
+  import State._
+  def update = (i: Input) => (s: Machine) =>
+    (i, s) match {
+      case (_, Machine(_, 0, _)) => s
+      case (Coin, Machine(false, _, _)) => s
+      case (Turn, Machine(true, _, _)) => s
+      case (Coin, Machine(true, candy, coin)) =>
+        Machine(false, candy, coin + 1)
+      case (Turn, Machine(false, candy, coin)) =>
+        Machine(true, candy - 1, coin)
+    }
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+    _ <- sequence(inputs.map(input => modify[Machine](update(input))) )
+    s <- get
+  } yield (s.coins, s.candies)
+}
+
+object FancyCandy {
+  import State._
+  def update = (i: Input) => (s: Machine) =>
+    (i, s) match {
+      case (_, Machine(_, 0, _)) => s
+      case (Coin, Machine(false, _, _)) => s
+      case (Turn, Machine(true, _, _)) => s
+      case (Coin, Machine(true, candy, coin)) =>
+        Machine(false, candy, coin + 1)
+      case (Turn, Machine(false, candy, coin)) =>
+        Machine(true, candy - 1, coin)
+    }
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+    // modify[Machine] _ is the Eta expansion of modify[Machine] method
+    _ <- sequence(inputs map (modify[Machine] _ compose update))
+    s <- get
+  } yield (s.coins, s.candies)
+}
+
+
+
 
 object stateTest {
   def main(args: Array[String]) {

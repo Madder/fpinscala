@@ -115,8 +115,6 @@ object Option {
   def traverse_slow[A, B](a: List[A])(f: A => Option[B]): Option[List[B]] =
     sequence (a map f)
 
-
-
 }
 
 object Test {
